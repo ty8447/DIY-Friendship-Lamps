@@ -31,7 +31,7 @@ Wiring Setup:
 
 ### Code Setup
 
-**File:** `Lamp_Device_V3.ino`
+[**File:** `Lamp_Device_V3.ino`](https://github.com/ty8447/DIY-Friendship-Lamps/tree/main/LampClient)
 
 #### Important Lines to Change:
 
