@@ -73,7 +73,7 @@ Upload the modified `client_code.ino` file to your ESP32 devices.
 
 ---
 
-##Network Configuration
+## Network Configuration
 
 If you plan to use the lamps outside of your local network, you will need to port forward the internal IP address and port of the server ESP32. This will allow the clients to communicate with the server from anywhere.
 
@@ -84,7 +84,7 @@ If you plan to use the lamps outside of your local network, you will need to por
 
 ---
 
-##To-Do List
+## To-Do List
 
 - Add authentication for clients
 
