@@ -31,7 +31,7 @@ Wiring Setup:
 
 ### Code Setup
 
-[**File:** `Lamp_Device_V3.ino`](https://github.com/ty8447/DIY-Friendship-Lamps/tree/main/LampClient)
+**File:** [`Lamp_Device_V3.ino`](https://github.com/ty8447/DIY-Friendship-Lamps/tree/main/LampClient)
 
 #### Important Lines to Change:
 
@@ -75,7 +75,7 @@ RGB LED Wiring Setup:
 
 ### Code Setup
 
-**File:** `Lamp_Server.ino`
+**File:** [`Lamp_Server.ino`](https://github.com/ty8447/DIY-Friendship-Lamps/tree/main/LampMQTTBroker)
 
 #### Important Lines to Change:
 
