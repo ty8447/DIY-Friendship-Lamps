@@ -56,7 +56,7 @@ When needing to access the Wifi Configuration for the server, ensure that the es
 
 ---
 
-## Local Hosted ESP32 Server *Recommended*
+## Local Hosted ESP32 Server (*Recommended*)
 
 ### Introduction
 
@@ -108,7 +108,7 @@ If you plan to use the lamps outside of your local network, you will need to por
 
 ---
 
-## Free to use open MQTT Server *Not Recommended*
+## Free to use open MQTT Server (*Not Recommended*)
 
 ### Introduction
 If you would prefer to not worry about setting up an MQTT server and are fine with the messages being open to the public (if a user subscribes to the channels), this is a much easier solution to getting the lamps to work.
@@ -127,5 +127,6 @@ const char* subscribeTopic = "esp32/ESP32_1/data";
 ## To-Do List
 
 - Add authentication for clients
+- Increase Reliability between the lamps and the ESP32 Server
 
 Feel free to contribute to this project by submitting issues and pull requests on GitHub. Enjoy building and using your DIY friendship lamps!
