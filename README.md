@@ -116,7 +116,8 @@ If you would prefer to not worry about setting up an MQTT server and are fine wi
 ### What needs to change
 Inside the WifiManager for each lamp client, instead of setting the MQTT Server to the ip address of your local server, you can use broker.mqtt-dashboard.com and save that. This however has drawbacks as it would allow anyone to publish to the channels you are listening on, so it is recommended that you replace the following lines with more personalized ones:
 ```
-// Replace these to more personalized ones so that there is less of a chance of interference. *Note: Make sure that whatever you set the publishTopic to on one lamp you have the subscripeTopic on the other lamp the exact same and vice versa.*
+// Replace these to more personalized ones so that there is less of a chance of interference.
+// *Note: Make sure that whatever you set the publishTopic to on one lamp you have the subscripeTopic on the other lamp the exact same and vice versa.*
 const char* publishTopic = "esp32/ESP32_2/data";
 const char* subscribeTopic = "esp32/ESP32_1/data";
 
