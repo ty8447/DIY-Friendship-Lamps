@@ -11,8 +11,8 @@ const int BLUE_PIN = 19;
 const uint16_t PORT = 1883;
 MqttBroker broker(PORT);
 
-const char* ssid = "Wireless";
-const char* password = "7817293793";
+const char* ssid = "Replace with your SSID";
+const char* password = "Replace with your Password";
 
 WiFiManager wm;
 int clientCount = 0;
