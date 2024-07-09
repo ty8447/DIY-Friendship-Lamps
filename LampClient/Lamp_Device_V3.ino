@@ -55,9 +55,9 @@ int checkTime = 5 * 1000;  // 5 seconds
 char mqtt_Server[40];
 const char* filename = "/mqtt_Server";
 const int mqttPort = 1883;
-const char* clientId = "ESP32_1";  // Change for other ESP32
-const char* publishTopic = "esp32/ESP32_2/data";
-const char* subscribeTopic = "esp32/ESP32_1/data";
+const char* clientId = "ESP32_1";  // Change to ESP32_2 for other ESP32
+const char* publishTopic = "esp32/ESP32_2/data"; // Change from ESP32_2 to ESP32_1 if the clientId is ESP32_2
+const char* subscribeTopic = "esp32/ESP32_1/data"; // Change from ESP32_1 to ESP32_2 if the clientId is ESP32_2
 bool canAcceptMessage = true;
 String apName = "Lamp ";
 char* msgTypeOp[4] = { "Send", "Confirm", "Reply", "Secret" };
