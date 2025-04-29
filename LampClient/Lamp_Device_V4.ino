@@ -57,9 +57,9 @@ char mqtt_Username[40];
 char mqtt_Password[40];
 const char* filename = "/mqtt_Server";
 const int mqttPort = 1883;
-const char* clientId = "ESP32_1";  // Change for other ESP32
-const char* publishTopic = "esp32/ESP32_1/data";
-const char* subscribeTopic = "esp32/ESP32_2/data";
+const char* clientId = "ESP32_2";  // Change for other ESP32
+const char* publishTopic = "esp32/ESP32_2/data"; //This should match the clientId
+const char* subscribeTopic = "esp32/ESP32_1/data"; //This should be the clientId of the other Lamp
 bool canAcceptMessage = true;
 String apName = "Lamp ";
 char* msgTypeOp[4] = { "Send", "Confirm", "Reply", "Secret" };
