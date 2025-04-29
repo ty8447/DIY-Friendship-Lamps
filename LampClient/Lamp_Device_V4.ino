@@ -57,9 +57,9 @@ char mqtt_Username[40];
 char mqtt_Password[40];
 const char* filename = "/mqtt_Server";
 const int mqttPort = 1883;
-const char* clientId = "ESP32_1";  // Change for other ESP32
-const char* publishTopic = "esp32/ESP32_1/data";
-const char* subscribeTopic = "esp32/ESP32_2/data";
+const char* clientId = "ESP32_2";  // Change for other ESP32
+const char* publishTopic = "esp32/ESP32_2/data";
+const char* subscribeTopic = "esp32/ESP32_1/data";
 bool canAcceptMessage = true;
 String apName = "Lamp ";
 char* msgTypeOp[4] = { "Send", "Confirm", "Reply", "Secret" };
@@ -359,7 +359,7 @@ void patterns(int op) {
       strip.fill(strip.Color(varBright, varBright, 0), 0, LEDCount);  //Yellow
       break;
     case 3:
-      strip.fill(strip.Color(varBright / 5, varBright, varBright / 5), 0, LEDCount);  //Lime
+      strip.fill(strip.Color(varBright / 6, varBright, varBright / 6), 0, LEDCount);  //Lime
       break;
     case 4:
       strip.fill(strip.Color(0, varBright, 0), 0, LEDCount);  //Green
@@ -400,13 +400,13 @@ void updateCCode() {
       Serial.print(" ~~ Locked in Color ");
       Serial.println(cCode[cCodeCount]);
       cCodeCount++;
-      patterns(1);
+      patterns(6);
     } else {
       checkColorCode();
       cCodeCount = 0;
       memset(cCode, 0, sizeof(cCode));
       Serial.println("Reset Code");
-      patterns(3);
+      patterns(2);
     }
   }
 }
@@ -420,6 +420,8 @@ void checkColorCode() {
     Serial.print("Entered Passcode: " + cCodeFull + "...");
     if (cCodeFull == "1229") {
       Serial.println("It's a match!");
+      patterns(4);
+      delay(50);
       String message = "<" + String(clientId) + "," + msgTypeOp[3] + "," + 1 + ">\n";
       client.publish(publishTopic, message.c_str());
       sendAnim();
