@@ -34,7 +34,7 @@ bool isFirstPress = true;
 bool isButtonPressed = false;  // Flag to track button state
 int timeout = 120;             // seconds to run for
 int pattern = 0;
-int numPatterns = 6;
+int numPatterns = 9;
 bool canChange = true;
 bool inMessage = false;
 bool canPub = false;
@@ -58,14 +58,20 @@ char mqtt_Password[40];
 const char* filename = "/mqtt_Server";
 const int mqttPort = 1883;
 const char* clientId = "ESP32_1";  // Change for other ESP32
-const char* publishTopic = "esp32/ESP32_2/data";
-const char* subscribeTopic = "esp32/ESP32_1/data";
+const char* publishTopic = "esp32/ESP32_1/data";
+const char* subscribeTopic = "esp32/ESP32_2/data";
 bool canAcceptMessage = true;
 String apName = "Lamp ";
 char* msgTypeOp[4] = { "Send", "Confirm", "Reply", "Secret" };
 char* msgFrom;
 char* msgType;
 int msgValue;
+int cCode[4] = { 0, 0, 0, 0 };  // Color Passcode Holder
+bool canUpdateCCode = true;
+bool cCodeMode = false;
+int storedCColorNum = 0;
+int cCodeCount = 0;  //Color Passcode Counter
+int heartsCode = 1129;
 
 Adafruit_NeoPixel strip(LEDCount, LEDPin, NEO_GRB + NEO_KHZ800);
 WiFiClient espClient;
@@ -78,7 +84,7 @@ WiFiManagerParameter custom_mqtt_Password("password", "Password", mqtt_Password,
 void setup() {
   apName += clientId;  // Uses String object's overloaded + operator
   WiFi.mode(WIFI_STA);
-  wm.setCountry("JP"); // Or use "JP", "CN", etc. for wider range support
+  wm.setCountry("JP");  // Or use "JP", "CN", etc. for wider range support
   Serial.begin(115200);
   delay(1000);
   Serial.println("_____________________________________");
@@ -100,18 +106,18 @@ void setup() {
     // If the file does not exist, create it and save an initial value
     Serial.println("Created Filesystem");
     File file = SPIFFS.open(filename, "w");
-  if (!file) {
-    Serial.println("Failed to open file for writing");
-    return;
-  }
+    if (!file) {
+      Serial.println("Failed to open file for writing");
+      return;
+    }
 
-  file.println(String("mqtt_Server: ") + "192.168.1.109");
-  file.println(String("mqtt_Username: ") + "");
-  file.println(String("mqtt_Password: ") + "");
+    file.println(String("mqtt_Server: ") + "192.168.1.109");
+    file.println(String("mqtt_Username: ") + "");
+    file.println(String("mqtt_Password: ") + "");
 
-  file.close();
-  Serial.println("MQTT config saved to file");
-    loadMqttConfig();               // Reload the value to update the mqtt_Server variable
+    file.close();
+    Serial.println("MQTT config saved to file");
+    loadMqttConfig();  // Reload the value to update the mqtt_Server variable
   } else {
     Serial.println("Should have loaded Filesystem");
   }
@@ -130,12 +136,22 @@ void loop() {
     checkNetworkConnection();
   }
   client.loop();
+
+  if (cCodeCount > 0 && cCodeMode) {
+    checkColorCode();
+  }
+
   int rstState = digitalRead(rstPin);
   unsigned long currentTime = millis();
   if (touchRead(touchPin) < 40) {
-    touchState = LOW;
+    if (lastTouchState != LOW) {
+      touchState = LOW;
+    }
   } else {
-    touchState = HIGH;
+    if (lastTouchState != HIGH) {
+      touchState = HIGH;
+      Serial.println("High!");
+    }
   }
   if ((millis() - lightOnTime) > 3000 && patternOn) {
     strip.clear();
@@ -165,9 +181,12 @@ void loop() {
     }
     if (rstTime < maxCount && canRst) {
       rstTime++;
+      //Serial.println(rstState);
+      //Serial.println("Callout1");
     } else if (rstTime >= maxCount) {  //Reset Confirmed
       int i = 0;
       rstTime = 1;
+      //Serial.println("Callout2");
       canRst = false;
       while (i < 255 * 2) {
         strip.fill(strip.Color(0, 255 - i / 2, 0), 0, LEDCount);
@@ -179,9 +198,35 @@ void loop() {
       LEDNum = map(rstTime, 500, maxCount, 0, LEDCount);
       strip.setPixelColor(LEDNum, strip.Color(0, 0, 255));
       strip.show();
+      //Serial.println("Callout3");
       canSecret = false;
-      if (LEDNum >= 5 && LEDNum <= 7) {
+      if (LEDNum < 2) {
+        //Serial.println("Callout4");
+        if (cCodeMode) {
+          updateCCode();
+        }
+      } else if (LEDNum >= 2 && LEDNum <= 5) {
+        if (!cCodeMode) {
+          cCodeMode = true;
+          Serial.println("Password Mode Enabled");
+        }
+      } else if (LEDNum >= 5 && LEDNum <= 7) {
         canSecret = true;
+        if (cCodeMode) {
+          cCodeMode = false;
+          Serial.println("Password Mode Disabled(5-7)");
+        }
+      } else {
+        canSecret = false;
+        if (cCodeMode) {
+          cCodeMode = false;
+          Serial.println(LEDNum);
+          Serial.println("Password Mode Disabled(>5)");
+        }
+      }
+    } else if (rstTime < 500 && rstState == LOW) {
+      if (cCodeMode) {
+        updateCCode();
       }
     }
   }
@@ -194,10 +239,13 @@ void loop() {
       strip.show();
       // Reset for a single press
       if (currentTime - lastPressTime >= 2500) {
-        Serial.println("3");
+        Serial.println("Reset Button Debounce");
+        canUpdateCCode = true;
         isFirstPress = true;
       }
       rstTime = 0;
+      Serial.print("rstTime Reset: ");
+      Serial.println(rstTime);
       canRst = true;
     }
   }
@@ -236,7 +284,7 @@ void loop() {
           lastTouchTime = millis();
         }
         if (touchAmounts >= 10) {
-          String message = "<" + String(clientId) + "," + String(msgTypeOp[3]) + "," + String(pattern) + ">\n";
+          String message = "<" + String(clientId) + "," + String(msgTypeOp[3]) + "," + 0 + ">\n";
           client.publish(publishTopic, message.c_str());
           sendAnim();
           touchAmounts = 0;
@@ -280,6 +328,11 @@ void loop() {
       }
     } else if (!hasShowPattern && !inMessage && !canConfirm) {
       hasShowPattern = true;
+      if (cCodeMode == true) {
+        storedCColorNum = pattern;
+        Serial.print("Pattern Number: ");
+        Serial.println(pattern);
+      }
       patterns(pattern);
     }
   } else if (touchState == HIGH && inMessage && canReply) {
@@ -297,25 +350,34 @@ void patterns(int op) {
   lightOnTime = millis();
   switch (op) {
     case 0:
-      strip.fill(strip.Color(varBright, 0, 0), 0, LEDCount);
+      strip.fill(strip.Color(varBright, 0, 0), 0, LEDCount);  //Red
       break;
     case 1:
-      strip.fill(strip.Color(0, varBright, 0), 0, LEDCount);
+      strip.fill(strip.Color(varBright, varBright / 5, 0), 0, LEDCount);  //Amber
       break;
     case 2:
-      strip.fill(strip.Color(0, 0, varBright), 0, LEDCount);
+      strip.fill(strip.Color(varBright, varBright, 0), 0, LEDCount);  //Yellow
       break;
     case 3:
-      strip.fill(strip.Color(varBright, varBright, 0), 0, LEDCount);
+      strip.fill(strip.Color(varBright / 5, varBright, varBright / 5), 0, LEDCount);  //Lime
       break;
     case 4:
-      strip.fill(strip.Color(varBright, 0, varBright), 0, LEDCount);
+      strip.fill(strip.Color(0, varBright, 0), 0, LEDCount);  //Green
       break;
     case 5:
-      strip.fill(strip.Color(0, varBright, varBright), 0, LEDCount);
+      strip.fill(strip.Color(0, varBright, varBright), 0, LEDCount);  //Cyan
       break;
     case 6:
-      strip.fill(strip.Color(varBright, varBright, varBright), 0, LEDCount);
+      strip.fill(strip.Color(0, 0, varBright), 0, LEDCount);  //Blue
+      break;
+    case 7:
+      strip.fill(strip.Color(varBright, 0, varBright), 0, LEDCount);  //Purple
+      break;
+    case 8:
+      strip.fill(strip.Color(varBright, varBright / 3.64, varBright / 1.7), 0, LEDCount);  //Pink
+      break;
+    case 9:
+      strip.fill(strip.Color(varBright, varBright, varBright), 0, LEDCount);  //White
       break;
   }
   strip.show();
@@ -326,6 +388,48 @@ void patterns(int op) {
 
 bool isMqttServerEmpty(const char* server) {
   return server == nullptr || strlen(server) == 0;
+}
+
+void updateCCode() {
+  if (canUpdateCCode) {
+    canUpdateCCode = false;
+    Serial.println("Updating Color Code");
+    if (cCodeCount < 4) {
+      Serial.print(storedCColorNum);
+      cCode[cCodeCount] = storedCColorNum;
+      Serial.print(" ~~ Locked in Color ");
+      Serial.println(cCode[cCodeCount]);
+      cCodeCount++;
+      patterns(1);
+    } else {
+      checkColorCode();
+      cCodeCount = 0;
+      memset(cCode, 0, sizeof(cCode));
+      Serial.println("Reset Code");
+      patterns(3);
+    }
+  }
+}
+
+void checkColorCode() {
+  if (cCodeCount >= 4) {
+    String cCodeFull = "";
+    for (int i = 0; i < 4; i++) {
+      cCodeFull += String(cCode[i]);
+    }
+    Serial.print("Entered Passcode: " + cCodeFull + "...");
+    if (cCodeFull == "1229") {
+      Serial.println("It's a match!");
+      String message = "<" + String(clientId) + "," + msgTypeOp[3] + "," + 1 + ">\n";
+      client.publish(publishTopic, message.c_str());
+      sendAnim();
+    } else {
+      Serial.println("No match.");
+      patterns(0);
+    }
+    cCodeFull = "";
+    cCodeCount = 0;
+  }
 }
 
 void checkNetworkConnection() {
@@ -574,53 +678,81 @@ void errorAnim() {
 void secretAnim() {
   int i = 0;
   int nonZero;
-  while (i < 2000) {
-    nonZero = 0;
-    for (int j = 0; j < LEDCount; j++) {
-      if (secretLocationsTract[j] != 0) {
-        nonZero++;
+  if (int(msgValue) == 0) {
+    while (i < 2000) {
+      nonZero = 0;
+      for (int j = 0; j < LEDCount; j++) {
+        if (secretLocationsTract[j] != 0) {
+          nonZero++;
+        }
       }
+      if (random(50) <= 5) {
+        if (nonZero < 10) {
+          int rand = random(LEDCount * 2);
+          if (secretLocationsTract[rand / 2] == 0) {
+            secretLocationsTract[rand / 2] = random(127, 255);
+          } else {
+            secretLocationsTract[rand / 2 + 1] = random(127, 255);
+          }
+        }
+      }
+      for (int v = 0; v < LEDCount; v++) {
+        if (secretLocationsTract[v] > 0) {
+          strip.setPixelColor(v, strip.Color(secretLocationsTract[v], secretLocationsTract[v], secretLocationsTract[v]));
+          strip.show();
+          secretLocationsTract[v] -= 2;
+        } else if (secretLocationsTract[v] < 0) {
+          secretLocationsTract[v] = 0;
+        }
+      }
+      i++;
     }
-    if (random(50) <= 5) {
-      if (nonZero < 10) {
-        int rand = random(LEDCount * 2);
-        if (secretLocationsTract[rand / 2] == 0) {
-          secretLocationsTract[rand / 2] = random(127, 255);
-        } else {
-          secretLocationsTract[rand / 2 + 1] = random(127, 255);
+    while (nonZero > 0) {
+      nonZero = 0;
+      for (int j = 0; j < LEDCount; j++) {
+        if (secretLocationsTract[j] != 0) {
+          nonZero++;
+        }
+      }
+      for (int v = 0; v < LEDCount; v++) {
+        if (secretLocationsTract[v] > 0) {
+          strip.setPixelColor(v, strip.Color(secretLocationsTract[v], secretLocationsTract[v], secretLocationsTract[v]));
+          strip.show();
+          secretLocationsTract[v] -= 2;
+        } else if (secretLocationsTract[v] < 0) {
+          secretLocationsTract[v] = 0;
         }
       }
     }
-    for (int v = 0; v < LEDCount; v++) {
-      if (secretLocationsTract[v] > 0) {
-        strip.setPixelColor(v, strip.Color(secretLocationsTract[v], secretLocationsTract[v], secretLocationsTract[v]));
-        strip.show();
-        secretLocationsTract[v] -= 2;
-      } else if (secretLocationsTract[v] < 0) {
-        secretLocationsTract[v] = 0;
+    strip.clear();
+    strip.show();
+  } else {
+    int beats = 0;
+    int rampBright = 0;
+    int pumps = 0;
+    const long inRamp = 50;
+    const long outRamp = 20;
+    while (beats < 5) {
+      while (pumps < 2) {
+        while (rampBright < 255) {
+          strip.fill(strip.Color(rampBright, 0, 0), 0, LEDCount);
+          strip.show();
+          rampBright++;
+          delay(inRamp / 255);
+        }
+        while (rampBright > 0) {
+          strip.fill(strip.Color(rampBright, 0, 0), 0, LEDCount);
+          strip.show();
+          rampBright--;
+          delay(outRamp / 255);
+        }
+        pumps++;
       }
+      delay(200);
+      pumps = 0;
+      beats++;
     }
-    i++;
   }
-  while (nonZero > 0) {
-    nonZero = 0;
-    for (int j = 0; j < LEDCount; j++) {
-      if (secretLocationsTract[j] != 0) {
-        nonZero++;
-      }
-    }
-    for (int v = 0; v < LEDCount; v++) {
-      if (secretLocationsTract[v] > 0) {
-        strip.setPixelColor(v, strip.Color(secretLocationsTract[v], secretLocationsTract[v], secretLocationsTract[v]));
-        strip.show();
-        secretLocationsTract[v] -= 2;
-      } else if (secretLocationsTract[v] < 0) {
-        secretLocationsTract[v] = 0;
-      }
-    }
-  }
-  strip.clear();
-  strip.show();
 }
 
 void playAnim() {
@@ -638,9 +770,9 @@ void playAnim() {
   } else if (strcmp(msgType, msgTypeOp[3]) == 0) {
     secretAnim();
   } else {
-    errorAnim();
-  }
-  holdLight = false;
+  errorAnim();
+}
+holdLight = false;
 }
 
 bool loadMqttConfig() {
