@@ -57,9 +57,9 @@ char mqtt_Username[40];
 char mqtt_Password[40];
 const char* filename = "/mqtt_Server";
 const int mqttPort = 1883;
-const char* clientId = "ESP32_2";  // Change for other ESP32
-const char* publishTopic = "esp32/ESP32_2/data"; //This should match the clientId
-const char* subscribeTopic = "esp32/ESP32_1/data"; //This should be the clientId of the other Lamp
+const char* clientId = "ESP32_2";                   // Change for other ESP32
+const char* publishTopic = "esp32/ESP32_2/data";    //This should match the clientId
+const char* subscribeTopic = "esp32/ESP32_1/data";  //This should be the clientId of the other Lamp
 bool canAcceptMessage = true;
 String apName = "Lamp ";
 char* msgTypeOp[4] = { "Send", "Confirm", "Reply", "Secret" };
@@ -84,11 +84,11 @@ WiFiManagerParameter custom_mqtt_Password("password", "Password", mqtt_Password,
 void setup() {
   apName += clientId;  // Uses String object's overloaded + operator
   WiFi.mode(WIFI_STA);
-  wm.setCountry("JP");  // Or use "JP", "CN", etc. for wider range support
+  wm.setCountry("US");  // Or use "JP", "CN", etc. for wider range support
   Serial.begin(115200);
   delay(1000);
   Serial.println("_____________________________________");
-
+  //wm.resetSettings();
   strip.begin();
   strip.show();
   strip.setBrightness(brightness);
@@ -193,6 +193,7 @@ void loop() {
         strip.show();
         i++;
       }
+      wm.resetSettings();
     }
     if (rstTime > 500 && rstTime < maxCount && rstState == LOW) {
       LEDNum = map(rstTime, 500, maxCount, 0, LEDCount);
@@ -470,6 +471,7 @@ void checkNetworkConnection() {
     // Check internet again
     if (wm.autoConnect(apName.c_str(), "Lamp1229")) {
       strip.fill(strip.Color(0, 255, 100), 0, LEDCount);  //CONNECTED!!
+      //saveConfigCallback();
       strip.show();
       delay(500);
       strip.clear();
@@ -491,34 +493,36 @@ void checkNetworkConnection() {
 
 void reconnect() {
   // Loop until reconnected
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection to ");
-    Serial.print(mqtt_Server);
-    Serial.print("...");
-    Serial.print("~~");
-    Serial.print(clientId);
-    Serial.print(":=:");
-    Serial.print(mqtt_Username);
-    Serial.print(":=:");
-    Serial.print(mqtt_Password);
-    Serial.print("~~");
-    if (client.connect(clientId, mqtt_Username, mqtt_Password)) {
-      Serial.println("connected");
-      client.subscribe(subscribeTopic);
-    } else {
-      tries++;
-      if (tries < 5) {
-        Serial.print("failed, rc=");
-        Serial.print(client.state());
-        Serial.println(" try again in 5 seconds");
-        delay(5000);
-        //strip.fill(strip.Color(255, 0, 0), 0, LEDCount);
-        strip.show();
-        delay(200);
-        strip.clear();
-        strip.show();
+  if (rstTime == 0) {
+    while (!client.connected()) {
+      Serial.print("Attempting MQTT connection to ");
+      Serial.print(mqtt_Server);
+      Serial.print("...");
+      Serial.print("~~");
+      Serial.print(clientId);
+      Serial.print(":=:");
+      Serial.print(mqtt_Username);
+      Serial.print(":=:");
+      Serial.print(mqtt_Password);
+      Serial.print("~~");
+      if (client.connect(clientId, mqtt_Username, mqtt_Password)) {
+        Serial.println("connected");
+        client.subscribe(subscribeTopic);
       } else {
-        startWebPortal();
+        tries++;
+        if (tries < 5) {
+          Serial.print("failed, rc=");
+          Serial.print(client.state());
+          Serial.println(" try again in 5 seconds");
+          delay(5000);
+          //strip.fill(strip.Color(255, 0, 0), 0, LEDCount);
+          strip.show();
+          delay(200);
+          strip.clear();
+          strip.show();
+        } else {
+          startWebPortal();
+        }
       }
     }
   }
@@ -531,7 +535,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   // Check if we can accept another message
 
   // Store the full incoming message
-  char message[length + 1];
+  //char message[length + 1];
   for (int i = 0; i < length; i++) {
     message[i] = (char)payload[i];
   }
@@ -773,9 +777,9 @@ void playAnim() {
   } else if (strcmp(msgType, msgTypeOp[3]) == 0) {
     secretAnim();
   } else {
-  errorAnim();
-}
-holdLight = false;
+    errorAnim();
+  }
+  holdLight = false;
 }
 
 bool loadMqttConfig() {
@@ -864,32 +868,6 @@ void saveConfigCallback() {
   reconnect();
 }
 
-// void startWebPortal() {
-//   strip.fill(strip.Color(0, 0, 255), 0, LEDCount);
-//   strip.show();
-//   wm.setSaveParamsCallback(saveConfigCallback);
-//   wm.setConfigPortalTimeout(timeout);
-//   if (!wm.startConfigPortal(apName.c_str(), "Lamp1229")) {
-//           Serial.println("Failed to connect and hit timeout");
-//           strip.fill(strip.Color(255, 100, 0), 0, LEDCount);
-//           strip.show();
-//           delay(500);
-//           strip.clear();
-//           strip.show();
-//           delay(3000);
-//           ESP.restart();
-//           delay(5000);
-//         }
-//         strip.fill(strip.Color(0, 255, 100), 0, LEDCount);  //CONNECTED!!
-//         strip.show();
-//         delay(500);
-//         strip.clear();
-//         strip.show();
-//         Serial.println("1");
-//         isFirstPress = true;
-//         saveConfigCallback();
-// }
-
 void startWebPortal() {
   strip.fill(strip.Color(0, 0, 255), 0, LEDCount);
   strip.show();
@@ -902,6 +880,7 @@ void startWebPortal() {
 
   wm.setSaveParamsCallback(saveConfigCallback);
   wm.setConfigPortalTimeout(timeout);
+
   if (!wm.startConfigPortal(apName.c_str(), "Lamp1229")) {
     Serial.println("Failed to connect and hit timeout");
     strip.fill(strip.Color(255, 100, 0), 0, LEDCount);
@@ -912,9 +891,15 @@ void startWebPortal() {
     delay(3000);
     ESP.restart();
     delay(5000);
+  } else {
+    Serial.println("WiFi connected... attempting to save custom parameters");
+    //saveConfigCallback(); // Manually call your save callback after successful WiFi connection
+    strip.fill(strip.Color(0, 255, 100), 0, LEDCount);  //CONNECTED!!
+    strip.show();
+    delay(500);
+    strip.clear();
+    strip.show();
+    Serial.println("Web portal finished.");
+    isFirstPress = true;
   }
-  // strncpy(mqtt_Server, custom_mqtt_Server.getValue(), sizeof(mqtt_Server));
-  // Serial.print("mqtt_Server: ");
-  // Serial.println(mqtt_Server);
-  // saveConfigCallback();
 }
