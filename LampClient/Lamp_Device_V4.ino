@@ -57,9 +57,9 @@ char mqtt_Username[40];
 char mqtt_Password[40];
 const char* filename = "/mqtt_Server";
 const int mqttPort = 1883;
-const char* clientId = "ESP32_2";                   // Change for other ESP32
-const char* publishTopic = "esp32/ESP32_2/data";    //This should match the clientId
-const char* subscribeTopic = "esp32/ESP32_1/data";  //This should be the clientId of the other Lamp
+const char* clientId = "ESP32_1";                   // Change for other ESP32
+const char* publishTopic = "esp32/ESP32_1/data";    //This should match the clientId
+const char* subscribeTopic = "esp32/ESP32_2/data";  //This should be the clientId of the other Lamp
 bool canAcceptMessage = true;
 String apName = "Lamp ";
 char* msgTypeOp[4] = { "Send", "Confirm", "Reply", "Secret" };
@@ -145,12 +145,18 @@ void loop() {
   unsigned long currentTime = millis();
   if (touchRead(touchPin) < 40) {
     if (lastTouchState != LOW) {
-      touchState = LOW;
+      delay(10);
+      if (touchRead(touchPin) < 40) { //Denounce the touch event
+        touchState = LOW;
+        Serial.print("Low!");
+        Serial.println(touchRead(touchPin));
+      }
     }
   } else {
     if (lastTouchState != HIGH) {
       touchState = HIGH;
-      Serial.println("High!");
+      Serial.print("High!");
+      Serial.println(touchRead(touchPin));
     }
   }
   if ((millis() - lightOnTime) > 3000 && patternOn) {
@@ -463,7 +469,7 @@ void checkNetworkConnection() {
     }
   } else {
     Serial.println("No internet connection. Retrying...");
-    strip.fill(strip.Color(255, 100, 0), 0, LEDCount);
+    strip.fill(strip.Color(100, 100, 100), 0, LEDCount);
     checkTime = 5 * 1000;
     strip.show();
     Serial.print(".");
